@@ -23,28 +23,28 @@ plink=/nobackup/lea_lab/layla/plink_linux_x86_64_20220402
 
 
 # Step 0: Make a merged file (index files and merge) 
-#echo "indexing files..."
-#for vcf in *.filt.vcf.gz; do
-    #bcftools index -t $vcf
-#done
+echo "indexing files..."
+for vcf in *.filt.vcf.gz; do
+    bcftools index -t $vcf
 
-#echo "merging files..."
-#bcftools merge -O z -o $output/merged_4apr25.vcf.gz *.filt.vcf.gz
+
+echo "merging files..."
+bcftools merge -O z -o $output/merged_4apr25.vcf.gz *.filt.vcf.gz
 
 
 # Step 1: Filter the existing merged VCF to retain only "PASS" variants
-#echo "Counting initial variants in merged VCF..."
-#bcftools stats $output/merged_4apr25.vcf.gz | grep "^SN" | grep "number of records:"
+echo "Counting initial variants in merged VCF..."
+bcftools stats $output/merged_4apr25.vcf.gz | grep "^SN" | grep "number of records:"
 
-#bcftools view -f PASS -O z -o $output/merged_pass_4apr25.vcf.gz $output/merged_4apr25.vcf.gz
+bcftools view -f PASS -O z -o $output/merged_pass_4apr25.vcf.gz $output/merged_4apr25.vcf.gz
 
 
-#echo "Counting variants after 'PASS' filter..."
-#bcftools stats $output/merged_pass_4apr25.vcf.gz | grep "^SN" | grep "number of records:"
+echo "Counting variants after 'PASS' filter..."
+bcftools stats $output/merged_pass_4apr25.vcf.gz | grep "^SN" | grep "number of records:"
 
 
 # Index the new filtered VCF file
-#bcftools index -t $output/merged_pass_4apr25.vcf.gz
+bcftools index -t $output/merged_pass_4apr25.vcf.gz
 
 num_samples=$(bcftools query -l $output/merged_pass_4apr25.vcf.gz | wc -l)
 

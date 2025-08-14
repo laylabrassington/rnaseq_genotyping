@@ -5,7 +5,7 @@ tips:
 
 *you should also check that you have all the modules you need before starting (might need to make a conda env)
 
-*also sometimes all the files don't zip properly in step 1 so jusrt make sure they're all there before you continue 
+*also sometimes all the files don't zip properly in step 1 so just make sure they're all there before you continue 
 
 *if using these scripts please make sure you update all the filepaths (also check filepaths for the shared resources e.g. gatk)
 

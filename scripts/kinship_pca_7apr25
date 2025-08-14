@@ -1,5 +1,4 @@
 #create PCA and relatedness matrix (relationship inference)
-
 #need to be in directory w/ "plink_hwe_filtered"
 
 

@@ -8,8 +8,8 @@
 
 /data/lea_lab/shared/programs/king -b plink_final_filtered_7apr25.bed --kinship --prefix king_kinship_7apr25
 
-The following 4 samples are excluded from the kinship analysis (M<512):
-(OA_tc_rnaseq_26aug2412070-AL-0001_1_S1 OA_tc_rnaseq_26aug2412070-AL-0001_1_S1,  OA_tc_rnaseq_18jul24VANP_LID0242_1_UN_Whole_C1_NUDRD_A05139_22CTFYLT4_ACAAGGCA,       OA_tc_rnaseq_18jul24VANP_LID0243_1_UN_Whole_C1_NUDRD_A05140_22CTFYLT4_TCAGCGCC,       OA_tc_rnaseq_18jul24VANP_LID0244_1_UN_Whole_C1_NUDRD_A05141_22CTFYLT4_AGTCACAT)
+4 samples are excluded from the kinship analysis (M<512)
+
 
 /nobackup/lea_lab/layla/plink_linux_x86_64_20220402/plink --noweb --bfile plink_final_filtered_7apr25 --geno 0.1 --make-bed --out pca_filt_7apr25
 

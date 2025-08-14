@@ -10,7 +10,7 @@ tips:
 *if using these scripts please make sure you update all the filepaths (also check filepaths for the shared resources e.g. gatk)
 
 # step 1 : variant calling of individual files 
-script : tc_genotyping_31jan25_nohas (nohas is referring to #SBATCH --constraint=haswell bc for a while thats the only way it would run)
+script : tc_genotyping_nohas (nohas is referring to #SBATCH --constraint=haswell bc for a while thats the only way it would run)
 
 what you need: 
 - a directory with all of your .bam files
@@ -22,7 +22,7 @@ what you need:
 
 
 # step 2 : merging and filtering the files 
-script: processing_rnaseq_genotype_4apr25
+script: processing_rnaseq_genotype
 
 what you need:
 - the directory with the .filt.vcf.gz files
@@ -30,7 +30,7 @@ what you need:
 
 
 # step 3 : running PCA and creating kinship matrix 
-script: kinship_pca_7apr25
+script: kinship_pca
 
 what you need:
 - plink_hwe_filtered .bed file plus id file that goes with

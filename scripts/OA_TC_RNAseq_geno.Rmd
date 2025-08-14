@@ -8,26 +8,13 @@ output: html_document
 
 need to move files around in cluster and rename 
 ```{r}
-metadata <- read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/qc/metadata_pca_5feb25.txt',sep = '\t')
+metadata <- read.delim('/filepath/metadata.txt',sep = '\t')
 lid_altid_map <- metadata %>% dplyr::select(LID, alt_id)
-#write.table(lid_altid_map,'/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/lid_altid_map.txt',row.names=F,sep='\t',quote=F)
+#write.table(lid_altid_map,'/filepath/lid_altid_map.txt',row.names=F,sep='\t',quote=F)
 
-#then ran sbatch script: /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/moving_files
+#then ran sbatch script: /filepath/moving_files
 ```
 
-needed to add these names 
-```{r}
-# LID0318 OA_tc_rnaseq_18jul24VANP_LID0318_1_UN_Whole_C1_NUDRD_A05145_22CTFYLT4_GTGTGGAG
-# LID0645 OA_tc_rnaseq_18jul24VANP_LID0645_1_UN_Whole_C1_NUDRD_A05175_22CTFYLT4_TGGAGATT
-# LID0653 OA_tc_rnaseq_18jul24VANP_LID0653_1_UN_Whole_C1_NUDRD_A05181_22CTFYLT4_GTTGAAGG 
-# LID0660 OA_tc_rnaseq_18jul24VANP_LID0660_1_UN_Whole_C1_NUDRD_A05187_22CTFYLT4_ACGACGTC 
-# LID2698 12471-AL-0005_11
-# LID2452 12471-AL-0006_03
-# LID0653 12471-AL-0006_33 
-# LID0318 12471-AL-0006_34 
-# LID2547 12471-AL-0007_21
-# LID0239 OA_tc_rnaseq_26aug2412070-AL-0001_1_S1
-```
 
 ```{r}
 #417 .vcfs in total
@@ -36,7 +23,7 @@ needed to add these names
 
 then need to merge vcf files 
 ```{r}
-#ran /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/comb/processing_rnaseq_genotype_data_10feb25
+#ran /filepath/processing_rnaseq_genotype_data_10feb25
 ```
 
 
@@ -61,7 +48,7 @@ library(ggplot2)
 
 load in kinship data 
 ```{r}
-king_kin0 <- fread("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/comb/out/king_kinship_19feb25.kin0")
+king_kin0 <- fread("/filepath/king_kinship_19feb25.kin0")
 ```
 
 
@@ -96,7 +83,7 @@ diag(kinship_matrix) <- 0.5
 
 change row and col names
 ```{r}
-lid_altid_map=read.delim("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/lid_altid_map.txt",sep = '')
+lid_altid_map=read.delim("/filepath/lid_altid_map.txt",sep = '')
 lid_altid_map$LID <- trimws(as.character(lid_altid_map$LID))
 lid_altid_map$alt_id <- trimws(as.character(lid_altid_map$alt_id))
 
@@ -120,7 +107,7 @@ colnames(kinship_matrix) <- name_mapping[colnames(kinship_matrix)]
 
 let's see if we're missing anyone
 ```{r}
-dat=read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/meta_12feb25.txt',sep = '\t')
+dat=read.delim('/filepath/meta.txt',sep = '\t')
 miss_kin_lid<-setdiff(dat$LID, colnames(kinship_matrix))
 miss_kin_tid <- dat %>% filter(LID %in% miss_kin_lid) %>% dplyr::select(tid)
 dat %>% filter(tid %in% miss_kin_tid$tid) %>% select(LID, tid)
@@ -209,7 +196,7 @@ ggplot(kinship_df_filtered, aes(x = Relatedness, fill = expected)) +
 figure out who's not in the right place
 ```{r}
 kinship_df_filtered %>% filter(expected=="no") %>% filter(Relatedness>0.3)
-dat=read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/meta_12feb25.txt',sep = '\t')
+dat=read.delim('/filepath/meta.txt',sep = '\t')
 dat %>% filter(tid %in% c("1499", "1491")) %>% select(LID, tid, rid, interview_location_med, med_date, sex_medical)
 kinship_df_filtered %>% filter(tid_ID1 %in% c("1499", "1491")) %>% filter(Relatedness>0.3)
 kinship_df_filtered %>% filter(tid_ID1 %in% c("1499")) %>% filter(tid_ID2 %in% c("1499"))
@@ -246,7 +233,7 @@ rm(list = ls())
 
 load in relatedness data 
 ```{r}
-king_kin0 <- fread("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/comb/out/king_related_19feb25.kin0")
+king_kin0 <- fread("/filepath/king_related_19feb25.kin0")
 ```
 
 
@@ -284,7 +271,7 @@ diag(relatedness_matrix) <- 0.5
 
 change row and col names
 ```{r}
-lid_altid_map=read.delim("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/lid_altid_map.txt",sep = '')
+lid_altid_map=read.delim("/filepath/lid_altid_map.txt",sep = '')
 lid_altid_map$LID <- trimws(as.character(lid_altid_map$LID))
 lid_altid_map$alt_id <- trimws(as.character(lid_altid_map$alt_id))
 
@@ -309,7 +296,7 @@ colnames(relatedness_matrix) <- name_mapping[colnames(relatedness_matrix)]
 
 let's see if we're missing anyone
 ```{r}
-dat=read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/meta_12feb25.txt',sep = '\t')
+dat=read.delim('/filepath/meta.txt',sep = '\t')
 miss_rel_lid<-setdiff(dat$LID, colnames(relatedness_matrix))
 miss_rel_tid <- dat %>% filter(LID %in% miss_rel_lid) %>% dplyr::select(tid)
 dat %>% filter(tid %in% miss_rel_tid$tid) %>% select(LID, tid)
@@ -421,7 +408,7 @@ rm(list = ls())
 
 read in eigen vector data 
 ```{r}
-eigenvec <- read.table("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/comb/out/plink_pca_19feb25.eigenvec", header = FALSE)
+eigenvec <- read.table("/filepath/plink_pca_19feb25.eigenvec", header = FALSE)
 colnames(eigenvec) <- c("FID", "IID", paste0("PC", 1:(ncol(eigenvec) - 2)))
 eigenvec %<>% dplyr::select(IID, PC1, PC2)
 colnames(eigenvec)[1] <- "alt_id"
@@ -432,7 +419,7 @@ colnames(eigenvec)[1] <- "alt_id"
 
 join w/ metadata 
 ```{r}
-dat=read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/meta_12feb25.txt',sep = '\t')
+dat=read.delim('/filepath/metadata.txt',sep = '\t')
 dat %<>% dplyr::select(-PC1, -PC2)
 dat <- left_join(dat, eigenvec, by="alt_id")
 ```

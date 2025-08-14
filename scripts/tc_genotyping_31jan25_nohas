@@ -1,0 +1,151 @@
+#!/bin/bash
+#SBATCH --mail-user=layla.brassington@vanderbilt.edu
+#SBATCH --mail-type=ALL
+#SBATCH -J tc_genotyping_31jan25            
+#SBATCH -n 1                   
+#SBATCH --cpus-per-task=16             
+#SBATCH --time=15:00:00               
+#SBATCH --mem=100GB
+#SBATCH --output=tc_genotyping_31jan25.%a.out
+#SBATCH --array=5-8
+
+# https://github.com/gatk-workflows/gatk4-rnaseq-germline-snps-indels/blob/master/gatk4-rna-best-practices.wdl
+# STAR
+# MergeBamAlignment 
+# MarkDuplicates
+# SplitNCigarReads
+# BaseRecalibrator
+# ApplyBQSR
+# HaplotypeCaller
+# VariantFiltration
+
+#directory where you want outfiles
+cd /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno
+
+module purge
+module load GCC/8.2.0 SAMtools/1.9 picard/2.18.27
+
+# Get the bamID from the OA_PBMCs_IDs_round2.txt
+bamID=$(sed -n ${SLURM_ARRAY_TASK_ID}p /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/tcRNAseq_ids_3dec24)
+
+# Define the input BAM file
+in_bam=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/mapped/$bamID.Aligned.sortedByCoord.out.bam 
+in_genome=/data/lea_lab/arneram/hg38.fa
+
+# 28 mil variants
+in_variants=/data/lea_lab/shared/1KG_mSTARR_variants/1000G_phase1.snps.high_confidence.hg38.vcf.gz
+gatk=/nobackup/lea_lab/petersrm/mSTARR/gatk-4.1.4.0
+
+# Extract the shortened sample name
+sampleID=$(sed -n ${SLURM_ARRAY_TASK_ID}p /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/tcRNAseq_ids_3dec24)
+
+# print out the ids 
+echo "bam ID: $bamID"
+echo "sample ID: $sampleID"
+
+in_bam_auto=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.auto.bam
+out_bam_sorted=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.sorted.bam
+out_bam_duplicates=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.dup.bam
+out_txt_dupmetrics=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.dup.txt
+out_bam_cigar=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.cigar.bam
+out_bam_readgroups=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.reg.bam
+out_table_recalibr=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.rbqs.table
+out_bam_recalibrat=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.rbqs.bam
+out_g_vcf=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.g.vcf
+out_g_vcf_filt=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.filt.vcf
+
+# Step   I: Identify duplicated reads with sorted bam or sam files
+# Step  II: Recalibrate base quality scores
+# Step III: Calling GATK variants and export VCF
+
+###### Step I
+echo 'samtools sorting and filtering...' # sort bam file
+
+samtools sort -o $out_bam_sorted $in_bam
+samtools index $out_bam_sorted
+samtools view -b $out_bam_sorted chr{1..22} > $in_bam_auto
+samtools sort -o $out_bam_sorted $in_bam_auto
+samtools index $out_bam_sorted
+
+echo 'picard duplications...' # run picard to mark duplicates
+
+java -jar $EBROOTPICARD/picard.jar MarkDuplicates I=$out_bam_sorted O=$out_bam_duplicates M=$out_txt_dupmetrics
+
+###### Step II
+echo 'adding read groups...' ##adds a header
+
+java -jar $EBROOTPICARD/picard.jar AddOrReplaceReadGroups I=$out_bam_duplicates O=$out_bam_readgroups SO=coordinate RGLB=$sampleID RGPL=illumina RGPU=RNAseq RGSM=$sampleID
+
+echo 'indexing...'
+
+samtools index $out_bam_readgroups
+
+echo 'running SplitNCigarReads...'
+
+$gatk/gatk SplitNCigarReads \
+                -R $in_genome \
+                -I $out_bam_readgroups \
+                -O $out_bam_cigar 
+# got to work up to here interactively
+
+echo 'recalibrating base quality scores...' # sort bam file
+
+$gatk/gatk BaseRecalibrator -I $out_bam_cigar -R $in_genome --use-original-qualities \
+--known-sites $in_variants -O $out_table_recalibr
+
+$gatk/gatk ApplyBQSR --add-output-sam-program-record -I $out_bam_cigar --use-original-qualities -bqsr $out_table_recalibr -O $out_bam_recalibrat
+
+echo 'post-indexing...'
+
+samtools index $out_bam_recalibrat
+
+###### Step III
+echo 'calling GATK variants as VCF and zip...' # sort bam file
+
+$gatk/gatk --java-options "-Xmx45G" HaplotypeCaller -R $in_genome -I $out_bam_recalibrat -O $out_g_vcf -dont-use-soft-clipped-bases --standard-min-confidence-threshold-for-calling 20
+
+$gatk/gatk --java-options "-Xmx45G" VariantFiltration \
+			--R $in_genome \
+			--V $out_g_vcf \
+			--window 35 \
+			--cluster 3 \
+			--filter-name "FS" \
+			--filter "FS > 30.0" \
+			--filter-name "QD" \
+			--filter "QD < 2.0" \
+			-O $out_g_vcf_filt
+			
+module purge
+module load GCC/5.4.0-2.26
+module load GCCcore/.6.4.0
+module load Intel/2016.3.210
+module load tabix/0.2.6
+
+out_g_vcf_filt=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.filt.vcf
+
+echo "zipping files..."
+bgzip -f $out_g_vcf_filt
+
+mv /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.filt.vcf.gz /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs
+
+###### cleanup
+
+module purge
+module load GCC/8.2.0 SAMtools/1.9
+
+echo $sampleID
+samtools view $in_bam | wc -l
+samtools view $in_bam_auto | wc -l
+samtools view $in_bam | grep 'chrM' | wc -l
+wc -l $out_g_vcf
+gzip -cd /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/$sampleID.filt.vcf.gz | grep 'PASS' | wc -l
+
+rm $in_bam_auto
+rm $out_bam_sorted
+rm $out_bam_duplicates
+rm $out_txt_dupmetrics
+rm $out_bam_cigar
+rm $out_bam_readgroups
+rm $out_table_recalibr
+rm $out_bam_recalibrat
+rm $out_g_vcf

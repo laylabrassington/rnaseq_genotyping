@@ -1,0 +1,461 @@
+---
+title: "OA_TC_RNAseq_geno"
+author: "layla"
+date: '2025-02-19'
+output: html_document
+---
+
+
+need to move files around in cluster and rename 
+```{r}
+metadata <- read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/qc/metadata_pca_5feb25.txt',sep = '\t')
+lid_altid_map <- metadata %>% dplyr::select(LID, alt_id)
+#write.table(lid_altid_map,'/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/lid_altid_map.txt',row.names=F,sep='\t',quote=F)
+
+#then ran sbatch script: /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/moving_files
+```
+
+needed to add these names 
+```{r}
+# LID0318 OA_tc_rnaseq_18jul24VANP_LID0318_1_UN_Whole_C1_NUDRD_A05145_22CTFYLT4_GTGTGGAG
+# LID0645 OA_tc_rnaseq_18jul24VANP_LID0645_1_UN_Whole_C1_NUDRD_A05175_22CTFYLT4_TGGAGATT
+# LID0653 OA_tc_rnaseq_18jul24VANP_LID0653_1_UN_Whole_C1_NUDRD_A05181_22CTFYLT4_GTTGAAGG 
+# LID0660 OA_tc_rnaseq_18jul24VANP_LID0660_1_UN_Whole_C1_NUDRD_A05187_22CTFYLT4_ACGACGTC 
+# LID2698 12471-AL-0005_11
+# LID2452 12471-AL-0006_03
+# LID0653 12471-AL-0006_33 
+# LID0318 12471-AL-0006_34 
+# LID2547 12471-AL-0007_21
+# LID0239 OA_tc_rnaseq_26aug2412070-AL-0001_1_S1
+```
+
+```{r}
+#417 .vcfs in total
+```
+
+
+then need to merge vcf files 
+```{r}
+#ran /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/comb/processing_rnaseq_genotype_data_10feb25
+```
+
+
+okay seems like even though i changed all the filenames it still ran everything else with the old names 
+
+------------------------------------------------------------------------
+
+
+KINSHIP
+
+
+
+load packages 
+```{r message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+library(data.table)
+library(magrittr)
+library(ggplot2)
+```
+
+
+load in kinship data 
+```{r}
+king_kin0 <- fread("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/comb/out/king_kinship_19feb25.kin0")
+```
+
+
+make matrix
+```{r}
+unique_individuals <- unique(c(king_kin0$ID1, king_kin0$ID2))
+
+kinship_matrix <- matrix(0, nrow = length(unique_individuals), ncol = length(unique_individuals))
+
+king_kin0$ID1 <- trimws(as.character(king_kin0$ID1))
+king_kin0$ID2 <- trimws(as.character(king_kin0$ID2))
+unique_individuals <- trimws(as.character(unique_individuals))
+
+rownames(kinship_matrix) <- unique_individuals
+colnames(kinship_matrix) <- unique_individuals
+
+for (i in 1:nrow(king_kin0)) {
+  id1 <- king_kin0$ID1[i]
+  id2 <- king_kin0$ID2[i]
+  
+  # Ensure both IDs are found in the matrix
+  if (id1 %in% unique_individuals && id2 %in% unique_individuals) {
+    kinship_matrix[id1, id2] <- king_kin0$Kinship[i]
+    kinship_matrix[id2, id1] <- king_kin0$Kinship[i]  # Ensure symmetry
+  }
+}
+
+diag(kinship_matrix) <- 0.5
+```
+
+
+
+change row and col names
+```{r}
+lid_altid_map=read.delim("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/lid_altid_map.txt",sep = '')
+lid_altid_map$LID <- trimws(as.character(lid_altid_map$LID))
+lid_altid_map$alt_id <- trimws(as.character(lid_altid_map$alt_id))
+
+#get current colnames 
+kinship_col_names <- data.frame(colnames(kinship_matrix))
+colnames(kinship_col_names) <- c("V1")
+
+#get new col names 
+lid_altid_filt <- lid_altid_map %>% filter(alt_id %in% kinship_col_names$V1)
+
+colnames(lid_altid_filt) <- c("new_names", "current_names")
+
+# Create named vectors for current and new names
+name_mapping <- setNames(lid_altid_filt$new_names, lid_altid_filt$current_names)
+
+# Change the row and column names of the kinship matrix
+rownames(kinship_matrix) <- name_mapping[rownames(kinship_matrix)]
+colnames(kinship_matrix) <- name_mapping[colnames(kinship_matrix)]
+```
+
+
+let's see if we're missing anyone
+```{r}
+dat=read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/meta_12feb25.txt',sep = '\t')
+miss_kin_lid<-setdiff(dat$LID, colnames(kinship_matrix))
+miss_kin_tid <- dat %>% filter(LID %in% miss_kin_lid) %>% dplyr::select(tid)
+dat %>% filter(tid %in% miss_kin_tid$tid) %>% select(LID, tid)
+#looks like everyone who got dropped out the matrix had at the other lid in there so we're good
+```
+
+
+reshape kinship matrix for plotting 
+```{r}
+dat %<>% filter(LID %in% colnames(kinship_matrix))
+
+# Convert the kinship matrix into a data frame
+kinship_df <- as.data.frame(as.table(as.matrix(kinship_matrix)))
+
+# Rename the columns for clarity
+colnames(kinship_df) <- c("Sample1", "Sample2", "Relatedness")
+
+#reduce metadata to just the cols we need 
+dat %<>% select(LID, tid)
+
+#add tid to the kinship matrix for both LIDs
+kinship_df <- merge(kinship_df, dat, by.x = "Sample1", by.y = "LID", all.x = TRUE)
+kinship_df <- merge(kinship_df, dat, by.x = "Sample2", by.y = "LID", all.x = TRUE, suffixes = c("_ID1", "_ID2"))
+
+# Create "expected" column: "yes" if IDs have the same TID, otherwise "no"
+kinship_df$expected <- ifelse(kinship_df$tid_ID1 == kinship_df$tid_ID2, "yes", "no")
+```
+
+
+plot (w/ same lid kinship)
+```{r}
+kinship_df <- na.omit(kinship_df)
+kinship_df$tid_ID1 <- as.character(kinship_df$tid_ID1)
+ggplot(kinship_df, aes(x = tid_ID1, y = Relatedness, color = expected)) +
+  geom_point(alpha=0.25) +
+  theme_classic() + theme(axis.text.x = element_blank()) + 
+  scale_color_manual(values = c("yes" = "purple", "no" = "orange")) + 
+  labs(title = "Kinship" , x = "Sample ID", y = "Kinship Value", color = "Self vs Other")
+```
+
+
+```{r}
+ggplot(kinship_df, aes(x = Relatedness, fill = expected)) +
+  geom_density(alpha = 0.5) +  
+  theme_classic() +
+  labs(title = "Density Plot of Kinship", 
+       x = "Kinship Value", 
+       y = "Density", 
+       fill = "Self vs Others") +
+  scale_fill_manual(values = c("yes" = "purple", "no" = "orange")) +  
+  theme(axis.text.x = element_blank())
+```
+
+
+
+plot (w/o same lid kinship)
+```{r}
+kinship_df_filtered <- kinship_df %>%
+  filter(Sample1 != Sample2)
+
+
+ggplot(kinship_df_filtered, aes(x = tid_ID1, y = Relatedness, color = expected)) +
+  geom_point(alpha=0.25) +
+  theme_classic() + theme(axis.text.x = element_blank()) + 
+  scale_color_manual(values = c("yes" = "purple", "no" = "orange")) + 
+  labs(title = "Kinship", x = "Sample ID", y = "Kinship Value", color = "Self vs Other")
+```
+
+
+
+```{r}
+ggplot(kinship_df_filtered, aes(x = Relatedness, fill = expected)) +
+  geom_density(alpha = 0.5) +  
+  theme_classic() +
+  labs(title = "Density Plot of Kinship", 
+       x = "Kinship Value", 
+       y = "Density", 
+       fill = "Self vs Others") +
+  scale_fill_manual(values = c("yes" = "purple", "no" = "orange")) +  
+  theme(axis.text.x = element_blank())
+```
+
+
+
+
+figure out who's not in the right place
+```{r}
+kinship_df_filtered %>% filter(expected=="no") %>% filter(Relatedness>0.3)
+dat=read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/meta_12feb25.txt',sep = '\t')
+dat %>% filter(tid %in% c("1499", "1491")) %>% select(LID, tid, rid, interview_location_med, med_date, sex_medical)
+kinship_df_filtered %>% filter(tid_ID1 %in% c("1499", "1491")) %>% filter(Relatedness>0.3)
+kinship_df_filtered %>% filter(tid_ID1 %in% c("1499")) %>% filter(tid_ID2 %in% c("1499"))
+```
+
+
+these seem to be fine (besides 1499) 
+```{r}
+kinship_df_filtered %>% filter(expected=="yes") %>% filter(Relatedness<0.3)
+kinship_df_filtered %>% filter(tid_ID1=="944") %>% filter(Relatedness>0.3)
+kinship_df_filtered %>% filter(tid_ID1=="745") %>% filter(Relatedness>0.3)
+kinship_df_filtered %>% filter(tid_ID1=="955") %>% filter(Relatedness>0.3)
+kinship_df_filtered %>% filter(tid_ID1 %in% c("944", "745", "955")) %>% ggplot(aes(x = tid_ID1, y = Relatedness, color = expected)) + geom_point(alpha=0.25) + theme_classic() + 
+  scale_color_manual(values = c("yes" = "purple", "no" = "orange")) + 
+  labs(title = "Kinship", x = "Sample ID", y = "Kinship Value", color = "Self vs Other")
+kinship_df_filtered %>% filter(tid_ID1 %in% c("944", "745", "955")) %>% ggplot(aes(x = Relatedness, fill = expected)) + geom_density(alpha = 0.5) + theme_classic() + labs(title = "Density Plot of Kinship", x = "Kinship Value", y = "Density", fill = "Self vs Others") + scale_fill_manual(values = c("yes" = "purple", "no" = "orange")) + theme(axis.text.x = element_blank())
+```
+
+
+
+
+
+
+
+------------------------------------------------------------------------
+
+RELATEDNESS 
+
+
+```{r include=FALSE, results='hide'}
+rm(list = ls())
+```
+
+
+load in relatedness data 
+```{r}
+king_kin0 <- fread("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/comb/out/king_related_19feb25.kin0")
+```
+
+
+
+
+make matrix
+```{r}
+unique_individuals <- unique(c(king_kin0$ID1, king_kin0$ID2))
+
+relatedness_matrix <- matrix(0, nrow = length(unique_individuals), ncol = length(unique_individuals))
+
+king_kin0$ID1 <- trimws(as.character(king_kin0$ID1))
+king_kin0$ID2 <- trimws(as.character(king_kin0$ID2))
+unique_individuals <- trimws(as.character(unique_individuals))
+
+rownames(relatedness_matrix) <- unique_individuals
+colnames(relatedness_matrix) <- unique_individuals
+
+for (i in 1:nrow(king_kin0)) {
+  id1 <- king_kin0$ID1[i]
+  id2 <- king_kin0$ID2[i]
+  
+  # Ensure both IDs are found in the matrix
+  if (id1 %in% unique_individuals && id2 %in% unique_individuals) {
+    relatedness_matrix[id1, id2] <- king_kin0$Kinship[i]
+    relatedness_matrix[id2, id1] <- king_kin0$Kinship[i]  # Ensure symmetry
+  }
+}
+
+diag(relatedness_matrix) <- 0.5
+```
+
+
+
+
+change row and col names
+```{r}
+lid_altid_map=read.delim("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/lid_altid_map.txt",sep = '')
+lid_altid_map$LID <- trimws(as.character(lid_altid_map$LID))
+lid_altid_map$alt_id <- trimws(as.character(lid_altid_map$alt_id))
+
+#get current colnames 
+relatedness_col_names <- data.frame(colnames(relatedness_matrix))
+colnames(relatedness_col_names) <- c("V1")
+
+#get new col names 
+lid_altid_filt <- lid_altid_map %>% filter(alt_id %in% relatedness_col_names$V1)
+
+colnames(lid_altid_filt) <- c("new_names", "current_names")
+
+# Create named vectors for current and new names
+name_mapping <- setNames(lid_altid_filt$new_names, lid_altid_filt$current_names)
+
+# Change the row and column names of the kinship matrix
+rownames(relatedness_matrix) <- name_mapping[rownames(relatedness_matrix)]
+colnames(relatedness_matrix) <- name_mapping[colnames(relatedness_matrix)]
+```
+
+
+
+let's see if we're missing anyone
+```{r}
+dat=read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/meta_12feb25.txt',sep = '\t')
+miss_rel_lid<-setdiff(dat$LID, colnames(relatedness_matrix))
+miss_rel_tid <- dat %>% filter(LID %in% miss_rel_lid) %>% dplyr::select(tid)
+dat %>% filter(tid %in% miss_rel_tid$tid) %>% select(LID, tid)
+#looks like everyone who got dropped out the matrix had at the other lid in there so we're good
+```
+
+
+
+
+
+
+reshape relatedness matrix for plotting 
+```{r}
+dat %<>% filter(LID %in% colnames(relatedness_matrix))
+
+# Convert the relatedness matrix into a data frame
+relatedness_df <- as.data.frame(as.table(as.matrix(relatedness_matrix)))
+
+# Rename the columns for clarity
+colnames(relatedness_df) <- c("Sample1", "Sample2", "Relatedness")
+
+#reduce metadata to just the cols we need 
+dat %<>% select(LID, tid)
+
+#add tid to the relatedness matrix for both LIDs
+relatedness_df <- merge(relatedness_df, dat, by.x = "Sample1", by.y = "LID", all.x = TRUE)
+relatedness_df <- merge(relatedness_df, dat, by.x = "Sample2", by.y = "LID", all.x = TRUE, suffixes = c("_ID1", "_ID2"))
+
+# Create "expected" column: "yes" if IDs have the same TID, otherwise "no"
+relatedness_df$expected <- ifelse(relatedness_df$tid_ID1 == relatedness_df$tid_ID2, "yes", "no")
+```
+
+
+plot (w/ same lid relatedness)
+```{r}
+relatedness_df <- na.omit(relatedness_df)
+relatedness_df$tid_ID1 <- as.character(relatedness_df$tid_ID1)
+ggplot(relatedness_df, aes(x = tid_ID1, y = Relatedness, color = expected)) +
+  geom_point(alpha=0.25) +
+  theme_classic() + theme(axis.text.x = element_blank()) + 
+  scale_color_manual(values = c("yes" = "purple", "no" = "orange")) + 
+  labs(title = "Relatedness" , x = "Sample ID", y = "Relatedness Value", color = "Self vs Other")
+```
+
+
+
+
+
+
+```{r}
+ggplot(relatedness_df, aes(x = Relatedness, fill = expected)) +
+  geom_density(alpha = 0.5) +  
+  theme_classic() +
+  labs(title = "Density Plot of Relatedness", 
+       x = "Relatedness Value", 
+       y = "Density", 
+       fill = "Self vs Others") +
+  scale_fill_manual(values = c("yes" = "purple", "no" = "orange")) +  
+  theme(axis.text.x = element_blank())
+```
+
+
+
+
+plot (w/o same lid kinship)
+```{r}
+relatedness_df_filtered <- relatedness_df %>%
+  filter(Sample1 != Sample2)
+
+
+ggplot(relatedness_df_filtered, aes(x = tid_ID1, y = Relatedness, color = expected)) +
+  geom_point(alpha=0.25) +
+  theme_classic() + theme(axis.text.x = element_blank()) + 
+  scale_color_manual(values = c("yes" = "purple", "no" = "orange")) + 
+  labs(title = "Relatedness", x = "Sample ID", y = "Relatedness Value", color = "Self vs Other")
+```
+
+
+
+
+
+```{r}
+ggplot(relatedness_df_filtered, aes(x = Relatedness, fill = expected)) +
+  geom_density(alpha = 0.5) +  
+  theme_classic() +
+  labs(title = "Density Plot of Relatedness", 
+       x = "Relatedness Value", 
+       y = "Density", 
+       fill = "Self vs Others") +
+  scale_fill_manual(values = c("yes" = "purple", "no" = "orange")) +  
+  theme(axis.text.x = element_blank())
+```
+
+
+
+
+
+
+------------------------------------------------------------------------
+
+PCA
+
+
+
+```{r include=FALSE, results='hide'}
+rm(list = ls())
+```
+
+
+read in eigen vector data 
+```{r}
+eigenvec <- read.table("/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/comb/out/plink_pca_19feb25.eigenvec", header = FALSE)
+colnames(eigenvec) <- c("FID", "IID", paste0("PC", 1:(ncol(eigenvec) - 2)))
+eigenvec %<>% dplyr::select(IID, PC1, PC2)
+colnames(eigenvec)[1] <- "alt_id"
+```
+
+
+
+
+join w/ metadata 
+```{r}
+dat=read.delim('/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/meta_12feb25.txt',sep = '\t')
+dat %<>% dplyr::select(-PC1, -PC2)
+dat <- left_join(dat, eigenvec, by="alt_id")
+```
+
+
+who didn't make it into pca 
+```{r}
+dat %>% filter(is.na(PC1)) %>% dplyr::select(LID, tid.cond)
+```
+
+
+plot
+```{r warning=FALSE}
+dat %>% ggplot(aes(x=PC1, y=PC2, shape=ethnicity2, color=ethnicity)) + geom_point() + theme_classic(base_size = 20)
+```
+
+
+
+
+
+
+
+
+
+
+

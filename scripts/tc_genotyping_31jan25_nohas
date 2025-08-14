@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH --mail-user=layla.brassington@vanderbilt.edu
+#SBATCH --mail-user=your_email
 #SBATCH --mail-type=ALL
-#SBATCH -J tc_genotyping_31jan25            
+#SBATCH -J tc_genotyping_date            
 #SBATCH -n 1                   
 #SBATCH --cpus-per-task=16             
 #SBATCH --time=15:00:00               
 #SBATCH --mem=100GB
-#SBATCH --output=tc_genotyping_31jan25.%a.out
-#SBATCH --array=5-8
+#SBATCH --output=tc_genotyping_date.%a.out
+#SBATCH --array=1-206 #based on sample number
 
 # https://github.com/gatk-workflows/gatk4-rnaseq-germline-snps-indels/blob/master/gatk4-rna-best-practices.wdl
 # STAR
@@ -20,16 +20,16 @@
 # VariantFiltration
 
 #directory where you want outfiles
-cd /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno
+cd /filepath
 
 module purge
 module load GCC/8.2.0 SAMtools/1.9 picard/2.18.27
 
 # Get the bamID from the OA_PBMCs_IDs_round2.txt
-bamID=$(sed -n ${SLURM_ARRAY_TASK_ID}p /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/tcRNAseq_ids_3dec24)
+bamID=$(sed -n ${SLURM_ARRAY_TASK_ID}p /filepath/id_list)
 
 # Define the input BAM file
-in_bam=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/mapped/$bamID.Aligned.sortedByCoord.out.bam 
+in_bam=/filepath/$bamID.Aligned.sortedByCoord.out.bam 
 in_genome=/data/lea_lab/arneram/hg38.fa
 
 # 28 mil variants
@@ -37,22 +37,22 @@ in_variants=/data/lea_lab/shared/1KG_mSTARR_variants/1000G_phase1.snps.high_conf
 gatk=/nobackup/lea_lab/petersrm/mSTARR/gatk-4.1.4.0
 
 # Extract the shortened sample name
-sampleID=$(sed -n ${SLURM_ARRAY_TASK_ID}p /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/tcRNAseq_ids_3dec24)
+sampleID=$(sed -n ${SLURM_ARRAY_TASK_ID}p /filepath/id_list)
 
 # print out the ids 
 echo "bam ID: $bamID"
 echo "sample ID: $sampleID"
 
-in_bam_auto=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.auto.bam
-out_bam_sorted=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.sorted.bam
-out_bam_duplicates=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.dup.bam
-out_txt_dupmetrics=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.dup.txt
-out_bam_cigar=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.cigar.bam
-out_bam_readgroups=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.reg.bam
-out_table_recalibr=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.rbqs.table
-out_bam_recalibrat=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.rbqs.bam
-out_g_vcf=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.g.vcf
-out_g_vcf_filt=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.filt.vcf
+in_bam_auto=/out_directory_filepath/$sampleID.auto.bam
+out_bam_sorted=/out_directory_filepath/$sampleID.sorted.bam
+out_bam_duplicates=/out_directory_filepath/$sampleID.dup.bam
+out_txt_dupmetrics=/out_directory_filepath/$sampleID.dup.txt
+out_bam_cigar=/out_directory_filepath/$sampleID.cigar.bam
+out_bam_readgroups=/out_directory_filepath/$sampleID.reg.bam
+out_table_recalibr=/out_directory_filepath/$sampleID.rbqs.table
+out_bam_recalibrat=/out_directory_filepath/$sampleID.rbqs.bam
+out_g_vcf=/out_directory_filepath/$sampleID.g.vcf
+out_g_vcf_filt=/out_directory_filepath/$sampleID.filt.vcf
 
 # Step   I: Identify duplicated reads with sorted bam or sam files
 # Step  II: Recalibrate base quality scores
@@ -121,12 +121,12 @@ module load GCCcore/.6.4.0
 module load Intel/2016.3.210
 module load tabix/0.2.6
 
-out_g_vcf_filt=/nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.filt.vcf
+out_g_vcf_filt=/out_directory_filepath/$sampleID.filt.vcf
 
 echo "zipping files..."
 bgzip -f $out_g_vcf_filt
 
-mv /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/$sampleID.filt.vcf.gz /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs
+mv /out_directory_filepath/$sampleID.filt.vcf.gz /out_directory_filepath/out_vcfs
 
 ###### cleanup
 
@@ -138,7 +138,7 @@ samtools view $in_bam | wc -l
 samtools view $in_bam_auto | wc -l
 samtools view $in_bam | grep 'chrM' | wc -l
 wc -l $out_g_vcf
-gzip -cd /nobackup/lea_lab/layla/OA_tc_rnaseq_3dec24/geno/out_vcfs/$sampleID.filt.vcf.gz | grep 'PASS' | wc -l
+gzip -cd /out_directory_filepath/out_vcfs/$sampleID.filt.vcf.gz | grep 'PASS' | wc -l
 
 rm $in_bam_auto
 rm $out_bam_sorted

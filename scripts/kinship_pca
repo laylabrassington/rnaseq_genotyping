@@ -2,17 +2,13 @@
 #need to be in directory w/ "plink_hwe_filtered"
 
 
-/nobackup/lea_lab/layla/plink_linux_x86_64_20220402/plink --noweb --bfile plink_hwe_filtered_4apr25 --geno 0.3 --maf 0.005 --make-bed --out plink_final_filtered_7apr25
+/filepath/plink_linux_x86_64_20220402/plink --noweb --bfile plink_hwe_filtered --geno 0.3 --maf 0.005 --make-bed --out plink_final_filtered
 
-/data/lea_lab/shared/programs/king -b plink_final_filtered_7apr25.bed --related --degree 2 --prefix king_related_7apr25
+filepath/king -b plink_final_filtered.bed --related --degree 2 --prefix king_related
 
-/data/lea_lab/shared/programs/king -b plink_final_filtered_7apr25.bed --kinship --prefix king_kinship_7apr25
+/filepath/king -b plink_final_filtered.bed --kinship --prefix king_kinship
 
-4 samples are excluded from the kinship analysis (M<512)
+/filepath/plink_linux_x86_64_20220402/plink --noweb --bfile plink_final_filtered --geno 0.1 --make-bed --out pca_filt
 
+/filepath/plink_linux_x86_64_20220402/plink --noweb --bfile pca_filt --pca  --mind 0.5 --out plink_pca
 
-/nobackup/lea_lab/layla/plink_linux_x86_64_20220402/plink --noweb --bfile plink_final_filtered_7apr25 --geno 0.1 --make-bed --out pca_filt_7apr25
-
-/nobackup/lea_lab/layla/plink_linux_x86_64_20220402/plink --noweb --bfile pca_filt_7apr25 \
-  --pca  --mind 0.5 --out plink_pca_7apr25
-#5 people removed due to missing genotype data

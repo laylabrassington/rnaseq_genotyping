@@ -1,7 +1,7 @@
 ---
 title: "OA_TC_RNAseq_geno"
 author: "layla"
-date: '2025-02-19'
+date: 'date'
 output: html_document
 ---
 

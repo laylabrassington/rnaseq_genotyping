@@ -6,31 +6,6 @@ output: html_document
 ---
 
 
-need to move files around in cluster and rename 
-```{r}
-metadata <- read.delim('/filepath/metadata.txt',sep = '\t')
-lid_altid_map <- metadata %>% dplyr::select(LID, alt_id)
-#write.table(lid_altid_map,'/filepath/lid_altid_map.txt',row.names=F,sep='\t',quote=F)
-
-#then ran sbatch script: /filepath/moving_files
-```
-
-
-```{r}
-#417 .vcfs in total
-```
-
-
-then need to merge vcf files 
-```{r}
-#ran /filepath/processing_rnaseq_genotype_data_10feb25
-```
-
-
-okay seems like even though i changed all the filenames it still ran everything else with the old names 
-
-------------------------------------------------------------------------
-
 
 KINSHIP
 
@@ -48,9 +23,8 @@ library(ggplot2)
 
 load in kinship data 
 ```{r}
-king_kin0 <- fread("/filepath/king_kinship_19feb25.kin0")
+king_kin0 <- fread("/filepath/king_kinship.kin0")
 ```
-
 
 make matrix
 ```{r}
@@ -81,7 +55,7 @@ diag(kinship_matrix) <- 0.5
 
 
 
-change row and col names
+change row and col names (if needed)
 ```{r}
 lid_altid_map=read.delim("/filepath/lid_altid_map.txt",sep = '')
 lid_altid_map$LID <- trimws(as.character(lid_altid_map$LID))
@@ -197,28 +171,7 @@ figure out who's not in the right place
 ```{r}
 kinship_df_filtered %>% filter(expected=="no") %>% filter(Relatedness>0.3)
 dat=read.delim('/filepath/meta.txt',sep = '\t')
-dat %>% filter(tid %in% c("1499", "1491")) %>% select(LID, tid, rid, interview_location_med, med_date, sex_medical)
-kinship_df_filtered %>% filter(tid_ID1 %in% c("1499", "1491")) %>% filter(Relatedness>0.3)
-kinship_df_filtered %>% filter(tid_ID1 %in% c("1499")) %>% filter(tid_ID2 %in% c("1499"))
 ```
-
-
-these seem to be fine (besides 1499) 
-```{r}
-kinship_df_filtered %>% filter(expected=="yes") %>% filter(Relatedness<0.3)
-kinship_df_filtered %>% filter(tid_ID1=="944") %>% filter(Relatedness>0.3)
-kinship_df_filtered %>% filter(tid_ID1=="745") %>% filter(Relatedness>0.3)
-kinship_df_filtered %>% filter(tid_ID1=="955") %>% filter(Relatedness>0.3)
-kinship_df_filtered %>% filter(tid_ID1 %in% c("944", "745", "955")) %>% ggplot(aes(x = tid_ID1, y = Relatedness, color = expected)) + geom_point(alpha=0.25) + theme_classic() + 
-  scale_color_manual(values = c("yes" = "purple", "no" = "orange")) + 
-  labs(title = "Kinship", x = "Sample ID", y = "Kinship Value", color = "Self vs Other")
-kinship_df_filtered %>% filter(tid_ID1 %in% c("944", "745", "955")) %>% ggplot(aes(x = Relatedness, fill = expected)) + geom_density(alpha = 0.5) + theme_classic() + labs(title = "Density Plot of Kinship", x = "Kinship Value", y = "Density", fill = "Self vs Others") + scale_fill_manual(values = c("yes" = "purple", "no" = "orange")) + theme(axis.text.x = element_blank())
-```
-
-
-
-
-
 
 
 ------------------------------------------------------------------------
@@ -233,10 +186,8 @@ rm(list = ls())
 
 load in relatedness data 
 ```{r}
-king_kin0 <- fread("/filepath/king_related_19feb25.kin0")
+king_kin0 <- fread("/filepath/king_related.kin0")
 ```
-
-
 
 
 make matrix
@@ -269,7 +220,7 @@ diag(relatedness_matrix) <- 0.5
 
 
 
-change row and col names
+change row and col names (if needed)
 ```{r}
 lid_altid_map=read.delim("/filepath/lid_altid_map.txt",sep = '')
 lid_altid_map$LID <- trimws(as.character(lid_altid_map$LID))
@@ -342,10 +293,6 @@ ggplot(relatedness_df, aes(x = tid_ID1, y = Relatedness, color = expected)) +
 ```
 
 
-
-
-
-
 ```{r}
 ggplot(relatedness_df, aes(x = Relatedness, fill = expected)) +
   geom_density(alpha = 0.5) +  
@@ -357,8 +304,6 @@ ggplot(relatedness_df, aes(x = Relatedness, fill = expected)) +
   scale_fill_manual(values = c("yes" = "purple", "no" = "orange")) +  
   theme(axis.text.x = element_blank())
 ```
-
-
 
 
 plot (w/o same lid kinship)
@@ -373,9 +318,6 @@ ggplot(relatedness_df_filtered, aes(x = tid_ID1, y = Relatedness, color = expect
   scale_color_manual(values = c("yes" = "purple", "no" = "orange")) + 
   labs(title = "Relatedness", x = "Sample ID", y = "Relatedness Value", color = "Self vs Other")
 ```
-
-
-
 
 
 ```{r}
@@ -400,7 +342,6 @@ ggplot(relatedness_df_filtered, aes(x = Relatedness, fill = expected)) +
 PCA
 
 
-
 ```{r include=FALSE, results='hide'}
 rm(list = ls())
 ```
@@ -408,13 +349,11 @@ rm(list = ls())
 
 read in eigen vector data 
 ```{r}
-eigenvec <- read.table("/filepath/plink_pca_19feb25.eigenvec", header = FALSE)
+eigenvec <- read.table("/filepath/plink_pca.eigenvec", header = FALSE)
 colnames(eigenvec) <- c("FID", "IID", paste0("PC", 1:(ncol(eigenvec) - 2)))
 eigenvec %<>% dplyr::select(IID, PC1, PC2)
 colnames(eigenvec)[1] <- "alt_id"
 ```
-
-
 
 
 join w/ metadata 

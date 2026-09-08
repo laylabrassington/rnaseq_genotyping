@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --mail-user=your_email
 #SBATCH --mail-type=ALL
-#SBATCH -J tc_genotyping_date            
+#SBATCH -J genotyping_date            
 #SBATCH -n 1                   
 #SBATCH --cpus-per-task=16             
 #SBATCH --time=15:00:00               
 #SBATCH --mem=100GB
-#SBATCH --output=tc_genotyping_date.%a.out
-#SBATCH --array=1-206 #based on sample number
+#SBATCH --output=genotyping_date.%a.out
+#SBATCH --array=X-XX #based on sample number
 
 # https://github.com/gatk-workflows/gatk4-rnaseq-germline-snps-indels/blob/master/gatk4-rna-best-practices.wdl
 # STAR
@@ -25,7 +25,7 @@ cd /filepath
 module purge
 module load GCC/8.2.0 SAMtools/1.9 picard/2.18.27
 
-# Get the bamID from the OA_PBMCs_IDs_round2.txt
+# Get the bamID 
 bamID=$(sed -n ${SLURM_ARRAY_TASK_ID}p /filepath/id_list)
 
 # Define the input BAM file
@@ -33,7 +33,7 @@ in_bam=/filepath/$bamID.Aligned.sortedByCoord.out.bam
 in_genome=/data/lea_lab/arneram/hg38.fa
 
 # 28 mil variants
-in_variants=/data/lea_lab/shared/1KG_mSTARR_variants/1000G_phase1.snps.high_confidence.hg38.vcf.gz
+in_variants=/filepath/1000G_phase1.snps.high_confidence.hg38.vcf.gz
 gatk=/nobackup/lea_lab/petersrm/mSTARR/gatk-4.1.4.0
 
 # Extract the shortened sample name

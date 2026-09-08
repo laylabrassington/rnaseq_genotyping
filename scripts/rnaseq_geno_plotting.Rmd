@@ -1,15 +1,12 @@
 ---
-title: "OA_TC_RNAseq_geno"
+title: "rnaseq_geno_plotting"
 author: "layla"
 date: 'date'
 output: html_document
 ---
 
-
-
-KINSHIP
-
-
+KING KINSHIP
+------------------------------------------------------------------------
 
 load packages 
 ```{r message=FALSE, warning=FALSE}
@@ -19,7 +16,6 @@ library(data.table)
 library(magrittr)
 library(ggplot2)
 ```
-
 
 load in kinship data 
 ```{r}
@@ -174,10 +170,11 @@ dat=read.delim('/filepath/meta.txt',sep = '\t')
 ```
 
 
+
+
+
+KING RELATEDNESS 
 ------------------------------------------------------------------------
-
-RELATEDNESS 
-
 
 ```{r include=FALSE, results='hide'}
 rm(list = ls())
@@ -336,16 +333,12 @@ ggplot(relatedness_df_filtered, aes(x = Relatedness, fill = expected)) +
 
 
 
-
+PLINK PCA
 ------------------------------------------------------------------------
-
-PCA
-
 
 ```{r include=FALSE, results='hide'}
 rm(list = ls())
 ```
-
 
 read in eigen vector data 
 ```{r}
@@ -355,24 +348,15 @@ eigenvec %<>% dplyr::select(IID, PC1, PC2)
 colnames(eigenvec)[1] <- "alt_id"
 ```
 
-
 join w/ metadata 
 ```{r}
 dat=read.delim('/filepath/metadata.txt',sep = '\t')
-dat %<>% dplyr::select(-PC1, -PC2)
 dat <- left_join(dat, eigenvec, by="alt_id")
 ```
 
-
-who didn't make it into pca 
-```{r}
-dat %>% filter(is.na(PC1)) %>% dplyr::select(LID, tid.cond)
-```
-
-
 plot
 ```{r warning=FALSE}
-dat %>% ggplot(aes(x=PC1, y=PC2, shape=ethnicity2, color=ethnicity)) + geom_point() + theme_classic(base_size = 20)
+dat %>% ggplot(aes(x=PC1, y=PC2, shape=group2, color=group)) + geom_point() + theme_classic(base_size = 20)
 ```
 
 

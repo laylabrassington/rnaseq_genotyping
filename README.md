@@ -10,7 +10,7 @@ tips:
 *if using these scripts please make sure you update all the filepaths (also check filepaths for the shared resources e.g. gatk)
 
 # step 1 : variant calling of individual files 
-script : tc_genotyping_nohas (nohas is referring to #SBATCH --constraint=haswell bc for a while thats the only way it would run)
+script : rnaseq_genotyping.sh
 
 what you need: 
 - a directory with all of your .bam files
@@ -22,7 +22,7 @@ what you need:
 
 
 # step 2 : merging and filtering the files 
-script: processing_rnaseq_genotype
+script: processing_rnaseq_genotypes.sh
 
 what you need:
 - the directory with the .filt.vcf.gz files
@@ -33,7 +33,7 @@ what you need:
 script: kinship_pca
 
 what you need:
-- plink_hwe_filtered .bed file plus id file that goes with
+- plink_hwe_filtered.bed file plus id file that goes with
 - plink and king programs (should be in lab shared)
 
 other info:
@@ -49,7 +49,7 @@ other info:
 
 
 # step 4 : cleaning up the data for use 
-script: OA_TC_RNAseq_geno.Rmd
+script: rnaseq_geno_plotting.Rmd
 
 what you need: 
 - metadata for your files (as well as naming information)
